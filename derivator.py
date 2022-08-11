@@ -1,5 +1,7 @@
+from audioop import mul
 from decimal import DivisionByZero
 from lexer import Token, TokenType, BinOpType, AstNode
+from functools import lru_cache
 import copy
 
 FUNC_DERS = {
@@ -59,7 +61,7 @@ def derivator(node: AstNode) -> AstNode:
 
 
 def d_func(node: AstNode) -> AstNode:
-    pass
+    return node
 
 
 # derivative of multiplication
@@ -139,6 +141,8 @@ def d_exp(f: AstNode, g: AstNode) -> AstNode:
     
 global_list = []
 
+
+
 def cleanup(node: AstNode) -> AstNode:
     global global_list
 
@@ -200,11 +204,33 @@ def cleanup(node: AstNode) -> AstNode:
                 return childA
 
             # simplifying mul trains into exponets eg: x*5*x*x^7 -> 5*x^9
+            # ----- section for simplifiing these mul train --- 
             # dfs through tree, add nodes contencted via mul to dict
-            mul_tokens_list = []
-            mul_tokens_list = mul_dfs(node, mul_tokens_list)
-            print(mul_tokens_list)
+            def mul_dfs(node: AstNode, myList: list): 
+                if node.nexts[0].token.value == BinOpType.MULTIPLY:
+                    mul_dfs(node.nexts[0], myList)
+                else:
+                    myList.append(node.nexts[0])
 
+                if node.nexts[1].token.value == BinOpType.MULTIPLY:
+                    mul_dfs(node.nexts[1], myList)
+                else:
+                    myList.append(node.nexts[1])
+
+                return myList
+
+
+            mul_tokens_list = []
+            tmp_dict, tmp_list = mul_list_to_dict(mul_dfs(node, mul_tokens_list))
+            node = reconstruct_tree( tmp_dict, tmp_list )
+            print(node)
+            # TODO ineficitnte but whatever
+            # clean up subtrees
+            tmp_l = []
+            for child in node.nexts:
+                tmp_l.append(cleanup(child))
+            node.nexts = tmp_l
+            print(node)
 
             return node
 
@@ -218,7 +244,8 @@ def cleanup(node: AstNode) -> AstNode:
             # childB is zero
             if childB.token.type == TokenType.NUMBER and childB.token.value == 0:
                 raise DivisionByZero
-
+            
+            # TODO check if this really is easier for later
             # a/b -> a * b^(-1) - easier for later        
             tmp_exp = AstNode( Token( TokenType.BINOP, BinOpType.EXPONENT))
             # x^(-1)
@@ -226,48 +253,115 @@ def cleanup(node: AstNode) -> AstNode:
             tmp_mul = AstNode( Token( TokenType.BINOP, BinOpType.MULTIPLY))
             tmp_mul.nexts = [childA, tmp_exp]
 
-            return tmp_mul
+            # call cleanup on itself after change for div to mul
+            return cleanup(tmp_mul)
+
+        if node.token.value == BinOpType.EXPONENT:
+            # two numbers
+            if childA.token.type == TokenType.NUMBER and childB.token.type == TokenType.NUMBER:
+                return AstNode( Token( TokenType.NUMBER, childA.token.value**childB.token.value) ) 
+            # childA is zero
+            if childA.token.type == TokenType.NUMBER and childA.token.value == 0:
+                return AstNode( Token( TokenType.NUMBER, 0 ))
+            # childB is zero
+            if childB.token.type == TokenType.NUMBER and childB.token.value == 0:
+                return AstNode( Token( TokenType.NUMBER, 1 ))
+            # childB is one
+            if childB.token.type == TokenType.NUMBER and childB.token.value == 1:
+                return childA
+            
                 
     return node        
 
-
-def mul_dfs(node: AstNode, myList: list): 
-    if node.nexts[0].token.value == BinOpType.MULTIPLY:
-        mul_dfs(node.nexts[0], myList)
-    else:
-        myList.append(node.nexts[0])
-
-    if node.nexts[1].token.value == BinOpType.MULTIPLY:
-        mul_dfs(node.nexts[1], myList)
-    else:
-        myList.append(node.nexts[1])
-
-    return myList
 
 def mul_list_to_dict(myList: list):
     """
     takes list of operations conected with '*'
     and returns a dict of: { base, list of exponents }
-    eg key = 'x', val = [3x, 4, -6, sin(x)] 
+    eg key = Astnode, like (Token = VAR x, nexts=[]) , val = [3x, 4, -6, sin(x)] !!! changed 
+    Functions cannot be keys - keys cannot have next lists TODO handle fucntions
     """
     out_list = []
     out_dict = {}
     for node in myList:
-        if node.token.type in (TokenType.VAR, TokenType.CONST, TokenType.NUMBER, TokenType.NUM_E, TokenType.FUNC):
-            if node.token.value in out_dict:
+        if node.token.type in (TokenType.VAR, TokenType.CONST, TokenType.NUMBER, TokenType.NUM_E):
+            if node.token in out_dict:
                 # add "1" to list, as its 1 instance of this token value in Mylist
-                out_dict[node.token.value].append( AstNode( Token(TokenType.NUMBER, 1) ))
+                out_dict[node.token].append( AstNode( Token(TokenType.NUMBER, 1) ))
             else:
                 # initlialize the list
-                out_dict[node.token.value] = [ AstNode( Token(TokenType.NUMBER, 1) ) ] 
+                out_dict[node.token] = [ AstNode( Token(TokenType.NUMBER, 1) ) ] 
         
         # token must be an operation
         elif node.token.type == TokenType.BINOP:
-            # nodes we dont want to touch
-            if node.token.value in (BinOpType.MINUS, BinOpType.PLUS):
-                out_list.append(node)
-            # operation type cant be multiply or divide 
-            elif node.token.value == BinOpType.EXPONENT:
-                pass
+            # operation type cant be multiply or divide
+            # can only be exponent 
+            if node.token.value == BinOpType.EXPONENT:
+                # we will only simplify one node deep
+                # if left node is not in 
+                # (TokenType.VAR, TokenType.CONST, TokenType.NUMBER, TokenType.NUM_E)  
+                # then it we be left as is
+                if node.nexts[0].token.type in \
+                     (TokenType.VAR, TokenType.CONST, TokenType.NUMBER, TokenType.NUM_E):
+                    # add the exponent to list
+                     if node.nexts[0].token in out_dict:
+                        out_dict[node.nexts[0].token].append( node.nexts[1] )
+                     else:
+                        # initlialize the list
+                        out_dict[node.nexts[0].token] = [ node.nexts[1] ]
+        
+        # handle the rest of the input
+        else:       
+            # handles complex exponents, +, - and maybe other things - functions ??
+            out_list.append(node)
+        
+    return out_dict, out_list
 
 
+def reconstruct_tree(mul_dist: dict, mul_list: 'list[AstNode]'):
+    # loop over nodes in dict and list
+    # contruct exponents and link them with mul nodes
+
+    # construct PLUS nodes from the lists in mul_dict
+    # and create a list of exponents
+    exponent_list = [] 
+    for key, val in mul_dist.items():
+        tmp_exp = AstNode( Token(TokenType.BINOP, BinOpType.EXPONENT ))
+        tmp_exp.nexts.append(AstNode(key))
+        # cleanup the exponent before adding to the node
+        tmp_exp.nexts.append(cleanup(list_to_operator_ast(val, BinOpType.PLUS)))
+        exponent_list.append(tmp_exp)
+    
+    # connect the exponent list and the mul_list given as arg to the function
+    # into one mul tree
+    # and retrun it
+    return list_to_operator_ast(exponent_list + mul_list, BinOpType.MULTIPLY)
+    
+
+
+def list_to_operator_ast(main_list:list, opetype:BinOpType):
+    if len(main_list) == 0:
+
+        raise Exception("how ?")
+
+     # only one elem, so no point in creating tree
+    if len(main_list) == 1:
+        return main_list[0]
+
+
+    out_list = []
+    for node in main_list:
+        tmp_plus1 = AstNode( Token(TokenType.BINOP, opetype ))
+        tmp_plus1.nexts.append(node)
+        out_list.append(tmp_plus1)
+
+    
+    # does nothing for list of len <= 2
+    for i, node in enumerate(out_list[0:-2:]):
+        node.nexts.append(out_list[i + 1])
+       
+    # last element has no nexts[1] - so its a redundant plus node 
+    # so second to last element, a plus node, gets the redundant plus node's nexts[0] arg
+    out_list[-2].nexts.append(out_list[-1].nexts[0])
+    
+    return out_list[0] 

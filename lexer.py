@@ -5,6 +5,7 @@ VAR_NAME = ["x", "y", "z"]
 
 from dataclasses import dataclass
 from enum import Enum
+from re import S
 
 WHITESPACE = " \t\n"
 DIGITS = "0123456789"
@@ -30,10 +31,16 @@ class BinOpType(Enum):
     EXPONENT = 5
 
 
-@dataclass
+@dataclass(frozen=True)
 class Token:
     type: TokenType
     value: any = None
+
+    def __eq__(self, __o: object) -> bool:
+        if self.type == __o.type and self.value == __o.value:
+            return True
+        else:
+            return False
 
     def __repr__(self):
         return self.type.name + (f" {self.value}" if self.value != None else "")
@@ -50,7 +57,7 @@ class AstNode:
     def __eq__(self, __o: object) -> bool:
         if not isinstance(__o, AstNode):
             return False
-        if self.token.type != __o.token.type or self.token.value != __o.token.value:
+        if self.token != __o.token:
             return False
         if not all([a == b for a,b in zip(self.nexts, __o.nexts)]):
             return False
@@ -100,7 +107,7 @@ BinOpsOrder = [
 
 
 
-def Parser(tokens: list[Token]) -> AstNode:
+def Parser(tokens) -> AstNode:
     new_root = AstNode()
     parems_open = 0
 
@@ -185,6 +192,11 @@ def Parser(tokens: list[Token]) -> AstNode:
         # add child node without the parenthesis
         new_root.nexts.append( Parser(tokens[2:-1:]) ) 
     return new_root
+
+
+# converts AST into string 
+def deparser(node: AstNode) -> str:
+    pass
 
 
 class Lexer:

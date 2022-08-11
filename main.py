@@ -8,7 +8,7 @@ tokens = l.generate_tokens()
 tokens = lexer.preParser(tokens)
 
 a = lexer.Parser(tokens)
-#a = derivator(node)
+a = derivator(a)
 
 # a = lexer.AstNode()
 # b = lexer.AstNode()
