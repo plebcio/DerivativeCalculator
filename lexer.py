@@ -1,7 +1,7 @@
 """
 codes: 0: num, 1: bianryOp1 (+, -), 2: bianryOp2 (*, /), 3: bianryOp3 ( ^ ), 4: parems '()',  5: uniaryOp ( sin, exp, log, ln  )
 """
-VAR_NAME = "x"
+VAR_NAME = ["x", "y", "z"]
 
 from dataclasses import dataclass
 from enum import Enum
@@ -46,6 +46,15 @@ class AstNode:
 
     def __repr__(self) -> str:
         return self.token.__repr__() + " (" + " ".join( [child.__repr__() for child in self.nexts ] ) + ")"
+
+    def __eq__(self, __o: object) -> bool:
+        if not isinstance(__o, AstNode):
+            return False
+        if self.token.type != __o.token.type or self.token.value != __o.token.value:
+            return False
+        if not all([a == b for a,b in zip(self.nexts, __o.nexts)]):
+            return False
+        return True
 
 
 
@@ -102,29 +111,62 @@ def Parser(tokens: list[Token]) -> AstNode:
 
     # handle +,-,*,/,^
     for curr_op in range(3):
-        for i, token in enumerate(tokens):
-            # handle parems
-
-            # skip numbers
-            if token.type == TokenType.NUMBER:
-                continue
-
-            if token.type == TokenType.RPAREN:
-                parems_open += 1
+        if curr_op != 2:
+            for i, token in enumerate(reversed(tokens)):
+                # since exponent is left associative list has to be rereversed TODO
+                i = len(tokens) - i - 1
                 
-            elif token.type == TokenType.LPEREN:
-                parems_open -= 1
+                # handle parems
 
-            # find all operations
-            if token.type == TokenType.BINOP and parems_open == 0:
-                # look for curr_op
-                if token.value in BinOpsOrder[curr_op]:
-                    new_root.token = token
-                    # add child nodes
-                    # TODO
-                    new_root.nexts.append( Parser( tokens[:i:] ) )
-                    new_root.nexts.append( Parser( tokens[i+1::] ) )
-                    return new_root
+                # skip numbers
+                if token.type == TokenType.NUMBER:
+                    continue
+
+                if token.type == TokenType.RPAREN:
+                    parems_open += 1
+                    
+                elif token.type == TokenType.LPEREN:
+                    parems_open -= 1
+
+                # find all operations
+                if token.type == TokenType.BINOP and parems_open == 0:
+                    # look for curr_op
+                    if token.value in BinOpsOrder[curr_op]:
+                        new_root.token = token
+                        # add child nodes
+                        # TODO
+                        new_root.nexts.append( Parser( tokens[:i:] ) )
+                        new_root.nexts.append( Parser( tokens[i+1::] ) )
+                        return new_root
+
+        # exponent since its right asociative
+        else:
+            for i, token in enumerate(tokens):
+
+                # since exponent is left associative list has to be rereversed TODO
+                
+                # handle parems
+
+                # skip numbers
+                if token.type == TokenType.NUMBER:
+                    continue
+
+                if token.type == TokenType.RPAREN:
+                    parems_open += 1
+                    
+                elif token.type == TokenType.LPEREN:
+                    parems_open -= 1
+
+                # find all operations
+                if token.type == TokenType.BINOP and parems_open == 0:
+                    # look for curr_op
+                    if token.value in BinOpsOrder[curr_op]:
+                        new_root.token = token
+                        # add child nodes
+                        # TODO
+                        new_root.nexts.append( Parser( tokens[:i:] ) )
+                        new_root.nexts.append( Parser( tokens[i+1::] ) )
+                        return new_root
 
 
         if parems_open != 0:
@@ -233,8 +275,8 @@ class Lexer:
             elif self.curent_char == ")":
                 self.tokens.append( Token(TokenType.RPAREN))
 
-            elif self.curent_char == VAR_NAME:
-                self.tokens.append( Token(TokenType.VAR, VAR_NAME))
+            elif self.curent_char in VAR_NAME:
+                self.tokens.append( Token(TokenType.VAR, self.curent_char))
             
             # unknow character - function
             else:

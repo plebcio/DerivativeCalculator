@@ -1,5 +1,5 @@
 import lexer
-from derivator import derivator, cleanup
+from derivator import derivator, cleanup #simplify
 #import Myparser
 
 text = input("Calc: ")
@@ -7,8 +7,8 @@ l = lexer.Lexer(text)
 tokens = l.generate_tokens()
 tokens = lexer.preParser(tokens)
 
-node = lexer.Parser(tokens)
-a = derivator(node)
+a = lexer.Parser(tokens)
+#a = derivator(node)
 
 # a = lexer.AstNode()
 # b = lexer.AstNode()

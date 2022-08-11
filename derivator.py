@@ -1,6 +1,6 @@
 from decimal import DivisionByZero
-from shutil import ExecError
 from lexer import Token, TokenType, BinOpType, AstNode
+import copy
 
 FUNC_DERS = {
     "sin"   : "cos(x)",
@@ -137,8 +137,10 @@ def d_exp(f: AstNode, g: AstNode) -> AstNode:
     return tmp_mul1
 
     
+global_list = []
 
 def cleanup(node: AstNode) -> AstNode:
+    global global_list
 
     if len(node.nexts) == 0:
         return node
@@ -197,6 +199,13 @@ def cleanup(node: AstNode) -> AstNode:
             if childB.token.type == TokenType.NUMBER and childB.token.value == 1:
                 return childA
 
+            # simplifying mul trains into exponets eg: x*5*x*x^7 -> 5*x^9
+            # dfs through tree, add nodes contencted via mul to dict
+            mul_tokens_list = []
+            mul_tokens_list = mul_dfs(node, mul_tokens_list)
+            print(mul_tokens_list)
+
+
             return node
 
         if node.token.value == BinOpType.DIVIDE:
@@ -210,23 +219,55 @@ def cleanup(node: AstNode) -> AstNode:
             if childB.token.type == TokenType.NUMBER and childB.token.value == 0:
                 raise DivisionByZero
 
-            # (smthing)/x -> (smthing) * x^(-1)
-            if childB.token.type == TokenType.VAR:
-                tmp_exp = AstNode( Token( TokenType.BINOP, BinOpType.EXPONENT))
-                # x^(-1)
-                tmp_exp.nexts = [childB, AstNode( Token(TokenType.NUMBER, -1))]
-                tmp_mul = AstNode( Token( TokenType.BINOP, BinOpType.MULTIPLY))
-                tmp_mul.nexts = [childA, tmp_exp]
-                
-                return tmp_mul
+            # a/b -> a * b^(-1) - easier for later        
+            tmp_exp = AstNode( Token( TokenType.BINOP, BinOpType.EXPONENT))
+            # x^(-1)
+            tmp_exp.nexts = [childB, AstNode( Token(TokenType.NUMBER, -1))]
+            tmp_mul = AstNode( Token( TokenType.BINOP, BinOpType.MULTIPLY))
+            tmp_mul.nexts = [childA, tmp_exp]
 
-            return node
+            return tmp_mul
                 
     return node        
-        
-# node.token is mul or div
-def cleanexponent(node: AstNode) -> AstNode:
-    pass
 
+
+def mul_dfs(node: AstNode, myList: list): 
+    if node.nexts[0].token.value == BinOpType.MULTIPLY:
+        mul_dfs(node.nexts[0], myList)
+    else:
+        myList.append(node.nexts[0])
+
+    if node.nexts[1].token.value == BinOpType.MULTIPLY:
+        mul_dfs(node.nexts[1], myList)
+    else:
+        myList.append(node.nexts[1])
+
+    return myList
+
+def mul_list_to_dict(myList: list):
+    """
+    takes list of operations conected with '*'
+    and returns a dict of: { base, list of exponents }
+    eg key = 'x', val = [3x, 4, -6, sin(x)] 
+    """
+    out_list = []
+    out_dict = {}
+    for node in myList:
+        if node.token.type in (TokenType.VAR, TokenType.CONST, TokenType.NUMBER, TokenType.NUM_E, TokenType.FUNC):
+            if node.token.value in out_dict:
+                # add "1" to list, as its 1 instance of this token value in Mylist
+                out_dict[node.token.value].append( AstNode( Token(TokenType.NUMBER, 1) ))
+            else:
+                # initlialize the list
+                out_dict[node.token.value] = [ AstNode( Token(TokenType.NUMBER, 1) ) ] 
+        
+        # token must be an operation
+        elif node.token.type == TokenType.BINOP:
+            # nodes we dont want to touch
+            if node.token.value in (BinOpType.MINUS, BinOpType.PLUS):
+                out_list.append(node)
+            # operation type cant be multiply or divide 
+            elif node.token.value == BinOpType.EXPONENT:
+                pass
 
 
