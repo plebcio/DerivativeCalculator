@@ -125,10 +125,12 @@ def d_func_helper(f_name, child_node: AstNode)-> AstNode:
 
     elif f_name == "cot":
         # cheat - retrun ((tan)^-1)'
-        return derivator(AstNode(Token(TokenType.BINOP, BinOpType.EXPONENT), [
-            AstNode(Token(TokenType.FUNC, 'tan'), [child_node]),
-            AstNode(Token(TokenType.NUMBER, -1)),
-        ]))
+        return AstNode(Token(TokenType.BINOP, BinOpType.MULTIPLY), [
+            AstNode(Token(TokenType.BINOP, BinOpType.EXPONENT), [
+                AstNode(Token(TokenType.FUNC, 'sin'), [child_node]),
+                AstNode(Token(TokenType.NUMBER, -2)),
+            ]), AstNode( Token( TokenType.NUMBER, -1 ))
+        ])
 
 
 # derivative of multiplication
@@ -397,7 +399,7 @@ def mul_list_to_dict(myList: list):
         if node.token.type == TokenType.NUMBER:
             out_num *= node.token.value
 
-        elif node.token.type in (TokenType.VAR, TokenType.CONST, TokenType.NUM_E):
+        elif node.token.type in (TokenType.VAR, TokenType.CONST, TokenType.NUM_E, TokenType.FUNC):
             # find index of the node that should be added to the "dict"
             node_index = next((i for i, x in enumerate(out_dict) if x[0] == node), None)
             if node_index != None:
@@ -414,14 +416,14 @@ def mul_list_to_dict(myList: list):
             # (TokenType.VAR, TokenType.CONST, TokenType.NUMBER, TokenType.NUM_E)  
             # then it we be left as is
             if node.nexts[0].token.type in \
-                    (TokenType.VAR, TokenType.CONST, TokenType.NUMBER, TokenType.NUM_E):
+                    (TokenType.VAR, TokenType.CONST, TokenType.NUMBER, TokenType.NUM_E, TokenType.FUNC):
                     node_child_index = next((i for i, x in enumerate(out_dict) if x[0] == node.nexts[0]), None)
                 # add the exponent to list
                     if node_child_index != None:
                         out_dict[node_child_index][1].append( node.nexts[1] )
                     else:
                     # initlialize the tuple (key, list) 
-                        out_dict.append( (node, [ node.nexts[1] ]) )
+                        out_dict.append( (node.nexts[0], [ node.nexts[1] ]) )
 
             # if exponent to complex, add it to out_list
             else:
@@ -447,6 +449,12 @@ def reconstruct_tree(mul_dict: dict, mul_list: 'list[AstNode]'):
     # and create a list of exponents
     exponent_list = [] 
     for key, val in mul_dict:
+        # dont add a^1, just a
+        if val == [AstNode(Token(TokenType.NUMBER, 1))]:
+            mul_list.append(key)
+            continue
+        elif val == [AstNode(Token(TokenType.NUMBER, 0))]:
+            continue
         tmp_exp = AstNode( Token(TokenType.BINOP, BinOpType.EXPONENT ))
         tmp_exp.nexts.append(key)
         # cleanup the exponent before adding to the node
