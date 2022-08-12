@@ -5,12 +5,15 @@ VAR_NAME = ["x", "y", "z"]
 
 from dataclasses import dataclass
 from enum import Enum
+from lib2to3.pgen2.token import PLUS
 from re import S
+from sre_constants import IN_IGNORE
+from turtle import listen
 
 WHITESPACE = " \t\n"
 DIGITS = "0123456789"
 
-FUNC_NAMES = ['sin', 'cos', 'exp', 'arcsin', "sqrt", "ln"]
+FUNC_NAMES = ['sin', 'cos', 'exp', 'arcsin', "sqrt", "ln", "tan", "cot"]
 
 class TokenType(Enum):
 
@@ -30,6 +33,8 @@ class BinOpType(Enum):
     DIVIDE   = 4
     EXPONENT = 5
 
+    def __repr__(self) -> str:
+        return self.name
 
 @dataclass(frozen=True)
 class Token:
@@ -194,9 +199,33 @@ def Parser(tokens) -> AstNode:
     return new_root
 
 
-# converts AST into string 
-def deparser(node: AstNode) -> str:
-    pass
+# converts AST into string
+# need to pass empty array when calling from outside this func 
+# major TODO
+def deparser(node: AstNode, token_list: list):
+    # basicly inorder tree search
+    
+    #search left subtree
+    deparser(node.nexts[0], token_list)
+    
+    if node.token.type == TokenType.BINOP:
+        if node.token.value == BinOpType.PLUS:
+            token_list.append('+')
+        elif node.token.value == BinOpType.MINUS:
+            token_list.append('+')
+        elif node.token.value == BinOpType.MULTIPLY:
+            token_list.append('*')
+        elif node.token.value == BinOpType.DIVIDE:
+            token_list.append('/')
+        elif node.token.value == BinOpType.EXPONENT:
+            token_list.append('^')
+
+    #search right subtree
+    deparser(node.nexts[0], token_list)
+
+
+    return 
+        
 
 
 class Lexer:
