@@ -5,8 +5,10 @@ VAR_NAME = ["x", "y", "z"]
 
 from dataclasses import dataclass
 from enum import Enum
+from lib2to3.pgen2 import token
 from lib2to3.pgen2.token import PLUS
-from re import S
+from re import L, S
+from secrets import token_bytes
 from sre_constants import IN_IGNORE
 from turtle import listen
 
@@ -202,29 +204,100 @@ def Parser(tokens) -> AstNode:
 # converts AST into string
 # need to pass empty array when calling from outside this func 
 # major TODO
-def deparser(node: AstNode, token_list: list):
-    # basicly inorder tree search
-    
+def deparser(node: AstNode) -> 'list[Token]':
+    # basicly inorder tree search 
+    token_list = []
+
+    # nodes with no children
+    if node.token.type in (TokenType.VAR, TokenType.CONST, TokenType.NUM_E, TokenType.NUMBER):
+        return [node.token]
+
+    # nodes with one child
+    if node.token.type == TokenType.FUNC:
+        token_list.append(node.token)
+        token_list.append( Token(TokenType.LPEREN))
+        token_list.append(deparser(node.nexts[0]))
+        token_list.append( Token(TokenType.RPAREN))
+        return token_list
+
+    # node must be Binop
+
     #search left subtree
-    deparser(node.nexts[0], token_list)
-    
-    if node.token.type == TokenType.BINOP:
-        if node.token.value == BinOpType.PLUS:
-            token_list.append('+')
-        elif node.token.value == BinOpType.MINUS:
-            token_list.append('+')
-        elif node.token.value == BinOpType.MULTIPLY:
-            token_list.append('*')
-        elif node.token.value == BinOpType.DIVIDE:
-            token_list.append('/')
-        elif node.token.value == BinOpType.EXPONENT:
-            token_list.append('^')
+    left_list = deparser(node.nexts[0]) 
 
     #search right subtree
-    deparser(node.nexts[0], token_list)
+    right_list = deparser(node.nexts[1])
+
+    # check if child node is lower in precedence than root node
+    # if yes, add parethesis
+    # propably a batter why to do this 
+    childA = node.nexts[0]
+    childB = node.nexts[1]
+    
+    if node.token.value == BinOpType.EXPONENT:
+        # simplify a^-1 -> 1/a
+        if childB.token.value == 1:
+            token_list.append( Token(TokenType.NUMBER, 1))
+            token_list.append(Token(TokenType.BINOP, BinOpType.DIVIDE))
+            token_list.append(Token(TokenType.LPEREN))
+            token_list += left_list
+            token_list.append( Token(TokenType.RPAREN))
+            return token_list
+
+        # if child is an operation put it in parems
+        if childA.token.type == TokenType.BINOP:
+            token_list.append(Token(TokenType.LPEREN))
+            token_list += left_list
+            token_list.append( Token(TokenType.RPAREN))
+        else:
+            token_list += left_list
+        
+        # add this node to list
+        token_list.append(node.token)
+
+        # if child is an operation put it in parems
+        if childB.token.type == TokenType.BINOP:
+            token_list.append(Token(TokenType.LPEREN))
+            token_list += right_list
+            token_list.append( Token(TokenType.RPAREN))
+        else:
+            token_list += right_list
+        
+    elif node.token.value == BinOpType.MULTIPLY:
+        # if child is an operation put it in parems
+        if childA.token.value in (BinOpType.PLUS, BinOpType.MINUS):
+            token_list.append(Token(TokenType.LPEREN))
+            token_list += left_list
+            token_list.append( Token(TokenType.RPAREN))
+        else:
+            token_list += left_list
+
+        # add this node to list
+        token_list.append(node.token)
+
+         # if child is an operation put it in parems
+        if childB.token.type == (BinOpType.PLUS, BinOpType.MINUS):
+            token_list.append(Token(TokenType.LPEREN))
+            token_list += right_list
+            token_list.append( Token(TokenType.RPAREN))
+        else:
+            token_list += right_list
+
+    # for now always put divide in parems
+    elif node.token.value == BinOpType.DIVIDE:
+        token_list.append(Token(TokenType.LPEREN))
+        token_list += left_list
+        token_list.append( Token(TokenType.RPAREN))
+        
+        # add this node to list
+        token_list.append(node.token)
+
+        token_list.append(Token(TokenType.LPEREN))
+        token_list += right_list
+        token_list.append( Token(TokenType.RPAREN))
 
 
-    return 
+    return token_list
         
 
 
