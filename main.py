@@ -7,14 +7,15 @@ tokens = l.generate_tokens()
 tokens = lexer.preParser(tokens)
 
 a = lexer.Parser(tokens)
-#a = derivator(a)
+# a = derivator(cleanup(a))
 
 # a.token = lexer.Token( lexer.TokenType.BINOP, lexer.BinOpType.DIVIDE )
 # a.nexts = [b, c]
 # b.token = lexer.Token( lexer.TokenType.NUMBER, 0.0 )
 # c.token = lexer.Token( lexer.TokenType.FUNC, 'sin' )
 
-a = cleanup(cleanup(a))
+a = lexer.deparser(a)
+# a = cleanup(cleanup(a))
 
 print(a)
 
