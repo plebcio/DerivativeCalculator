@@ -5,12 +5,7 @@ VAR_NAME = ["x", "y", "z"]
 
 from dataclasses import dataclass
 from enum import Enum
-from lib2to3.pgen2 import token
-from lib2to3.pgen2.token import PLUS
-from re import L, S
-from secrets import token_bytes
-from sre_constants import IN_IGNORE
-from turtle import listen
+import re
 
 WHITESPACE = " \t\n"
 DIGITS = "0123456789"
@@ -80,6 +75,10 @@ def preParser(tokens):
         xsin(x) -> x * sin(x)
         e^x -> exp(x)
     """
+
+    if tokens[0].value == BinOpType.MINUS:
+        output_copy.append(Token(TokenType.NUMBER, 0))
+
     for token in tokens:
         if len(output_copy) != 0:
             if token.type == TokenType.VAR:
@@ -98,6 +97,13 @@ def preParser(tokens):
                 elif output_copy[-1].type == TokenType.VAR:
                     output_copy.append( Token( TokenType.BINOP, BinOpType.MULTIPLY ))
 
+            elif token.value == BinOpType.MINUS:
+                if output_copy[-1].type in (TokenType.BINOP, TokenType.LPEREN):
+                    # turn a "-" without an left argument into
+                    # -1  * 
+                    output_copy.append(Token(TokenType.NUMBER, -1))
+                    output_copy.append(Token(TokenType.BINOP, BinOpType.MULTIPLY))
+                    continue
 
         output_copy.append(token)
     
@@ -205,18 +211,22 @@ def Parser(tokens) -> AstNode:
 # need to pass empty array when calling from outside this func 
 # major TODO
 def deparser(node: AstNode) -> 'list[Token]':
+    
     # basicly inorder tree search 
     token_list = []
 
     # nodes with no children
     if node.token.type in (TokenType.VAR, TokenType.CONST, TokenType.NUM_E, TokenType.NUMBER):
+        if node.token.type == TokenType.NUMBER:
+            if node.token.value < 0:
+                return [Token(TokenType.LPEREN), node.token, Token(TokenType.RPAREN)]
         return [node.token]
 
     # nodes with one child
     if node.token.type == TokenType.FUNC:
         token_list.append(node.token)
         token_list.append( Token(TokenType.LPEREN))
-        token_list.append(deparser(node.nexts[0]))
+        token_list += deparser(node.nexts[0])
         token_list.append( Token(TokenType.RPAREN))
         return token_list
 
@@ -276,7 +286,7 @@ def deparser(node: AstNode) -> 'list[Token]':
         token_list.append(node.token)
 
          # if child is an operation put it in parems
-        if childB.token.type == (BinOpType.PLUS, BinOpType.MINUS):
+        if childB.token.type in (BinOpType.PLUS, BinOpType.MINUS):
             token_list.append(Token(TokenType.LPEREN))
             token_list += right_list
             token_list.append( Token(TokenType.RPAREN))
@@ -296,9 +306,50 @@ def deparser(node: AstNode) -> 'list[Token]':
         token_list += right_list
         token_list.append( Token(TokenType.RPAREN))
 
+    
+    else: # plus and minus
+        token_list += left_list
+        token_list.append( node.token )
+        token_list += right_list
 
     return token_list
         
+
+# transforms list of tokens into output string
+def delexer(token_list: 'list[Token]') -> str:
+    out_list = []
+    for token in token_list:
+        if token.type == TokenType.LPEREN:
+            out_list.append("(")
+        elif token.type == TokenType.RPAREN:
+            out_list.append(")")
+        elif token.type == TokenType.NUM_E:
+            out_list.append("e")
+        elif token.type == TokenType.NUMBER:
+            out_list.append(str(token.value))
+        elif token.type == TokenType.FUNC:
+            out_list.append(token.value)
+        elif token.type == TokenType.VAR:
+            out_list.append(token.value)
+        # only binops left
+        elif token.value == BinOpType.PLUS:
+            out_list.append("+")
+        elif token.value == BinOpType.MINUS:
+            out_list.append("-")
+        elif token.value == BinOpType.MULTIPLY:
+            out_list.append("*")
+        elif token.value == BinOpType.DIVIDE:
+            out_list.append("/")
+        elif token.value == BinOpType.EXPONENT:
+            out_list.append("^")
+
+    return "".join(out_list)
+
+
+# reverses all non intuative changes made by cleanup
+# TODO not urgent
+def uncleanup(s: str):
+    return s.replace("(-1)*", "-")
 
 
 class Lexer:

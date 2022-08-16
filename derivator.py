@@ -124,12 +124,13 @@ def d_func_helper(f_name, child_node: AstNode)-> AstNode:
         ]))
 
     elif f_name == "cot":
-        # cheat - retrun ((tan)^-1)'
+        # -sin(x)^-2
         return AstNode(Token(TokenType.BINOP, BinOpType.MULTIPLY), [
+            AstNode( Token( TokenType.NUMBER, -1 )),
             AstNode(Token(TokenType.BINOP, BinOpType.EXPONENT), [
                 AstNode(Token(TokenType.FUNC, 'sin'), [child_node]),
-                AstNode(Token(TokenType.NUMBER, -2)),
-            ]), AstNode( Token( TokenType.NUMBER, -1 ))
+                AstNode(Token(TokenType.NUMBER, -2))
+            ])
         ])
 
 
@@ -464,7 +465,7 @@ def reconstruct_tree(mul_dict: dict, mul_list: 'list[AstNode]'):
     # connect the exponent list and the mul_list given as arg to the function
     # into one mul tree
     # and retrun it
-    return list_to_operator_ast(exponent_list + mul_list, BinOpType.MULTIPLY)
+    return list_to_operator_ast(mul_list + exponent_list, BinOpType.MULTIPLY)
     
 
 
