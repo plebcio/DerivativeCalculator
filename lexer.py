@@ -3,9 +3,11 @@ codes: 0: num, 1: bianryOp1 (+, -), 2: bianryOp2 (*, /), 3: bianryOp3 ( ^ ), 4: 
 """
 VAR_NAME = ["x", "y", "z"]
 
+from cgi import print_arguments
 from dataclasses import dataclass
+from distutils.util import change_root
 from enum import Enum
-import re
+import copy
 
 WHITESPACE = " \t\n"
 DIGITS = "0123456789"
@@ -348,8 +350,48 @@ def delexer(token_list: 'list[Token]') -> str:
 
 # reverses all non intuative changes made by cleanup
 # TODO not urgent
-def uncleanup(s: str):
-    return s.replace("(-1)*", "-")
+# perhaps change it so it works on token list
+def uncleanup(token_list: "list[Token]"):
+
+    # patterns elem is tuple ([ nodes ], [nodes])
+    patterns = [
+
+        ([  # " -1 * " ->  " - "
+        Token(TokenType.LPEREN), 
+        Token(TokenType.NUMBER, -1),
+        Token(TokenType.RPAREN),
+        Token(TokenType.BINOP, BinOpType.MULTIPLY)
+        ], [Token(TokenType.BINOP, BinOpType.MINUS)]),
+        
+        ([  # " + - " ->  " - "
+            Token(TokenType.BINOP, BinOpType.PLUS), 
+            Token(TokenType.BINOP, BinOpType.MINUS),
+        ], [Token(TokenType.BINOP, BinOpType.MINUS)])
+
+    ]
+
+    in_list = token_list
+    out_list = []
+    change_made = True
+    # match pattern to list of tokens
+    while True:
+        change_made = False
+        for pattern1, evaluates_to in patterns:
+            for i, token in enumerate(in_list):
+                # (-1)* -> -
+                if token.type == TokenType.LPEREN:
+                    if all([tok == pattern_tok for tok, pattern_tok in zip(in_list[i::], pattern1)]):
+                        out_list += in_list[0:i:]
+                        out_list += evaluates_to
+                        out_list += in_list[ i + len(pattern1):: ]
+                        change_made = True
+                        break
+                
+        if not change_made:
+            return in_list
+
+        in_list = copy.deepcopy(out_list)
+        out_list = []
 
 
 class Lexer:

@@ -375,13 +375,32 @@ def cleanup(node: AstNode) -> AstNode:
                 return cleanup(node)
 
     elif node.token.type == TokenType.FUNC:
-        pass
+        return func_cleanup(node)
                 
     return node        
 
+# cleanup functions like ln
+def func_cleanup(node: AstNode) -> AstNode:
 
-def func_cleanup(node: AstNode):
-    pass
+    if node.token.value == "ln":
+        # if child is exponent
+        if node.nexts[0].token.value == BinOpType.EXPONENT:
+            # ln(a^b) -> b * ln(a)
+            exponent_childA = node.nexts[0].nexts[0]
+            exponent_childB = node.nexts[0].nexts[1]
+            node = AstNode(Token(TokenType.BINOP, BinOpType.MULTIPLY), [
+                exponent_childA, AstNode(Token(TokenType.FUNC, "ln"), [
+                    exponent_childB
+                ])
+            ])
+            return cleanup(node)
+
+        if node.nexts[0].token.type == TokenType.NUM_E:
+            # ln(e) -> 1
+            return AstNode(Token(TokenType.NUMBER, 1))
+            
+
+    return node
 
 
 def mul_list_to_dict(myList: list):
