@@ -8,9 +8,11 @@ tokens = lexer.preParser(tokens)
 
 
 a = lexer.Parser(tokens)
+a = cleanup(a)
 a = derivator(a)
 a = cleanup(a)
 a = lexer.deparser(a)
+print(a)
 a = lexer.uncleanup(a)
 a = lexer.delexer(a)
 

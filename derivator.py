@@ -419,7 +419,10 @@ def mul_list_to_dict(myList: list):
         if node.token.type == TokenType.NUMBER:
             out_num *= node.token.value
 
-        elif node.token.type in (TokenType.VAR, TokenType.CONST, TokenType.NUM_E, TokenType.FUNC):
+        # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! BIG CHANGE !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        # TODO 
+        #elif node.token.type in (TokenType.VAR, TokenType.CONST, TokenType.NUM_E, TokenType.FUC):     -  OLD WORKING VERSION
+        elif node.token.value != BinOpType.EXPONENT:
             # find index of the node that should be added to the "dict"
             node_index = next((i for i, x in enumerate(out_dict) if x[0] == node), None)
             if node_index != None:
@@ -435,8 +438,13 @@ def mul_list_to_dict(myList: list):
             # if left node is not in 
             # (TokenType.VAR, TokenType.CONST, TokenType.NUMBER, TokenType.NUM_E)  
             # then it we be left as is
-            if node.nexts[0].token.type in \
-                    (TokenType.VAR, TokenType.CONST, TokenType.NUMBER, TokenType.NUM_E, TokenType.FUNC):
+
+            # !!!!!!!!!!!!!! old version
+            # if node.nexts[0].token.type in \
+            #         (TokenType.VAR, TokenType.CONST, TokenType.NUMBER, TokenType.NUM_E, TokenType.FUNC):
+
+
+            if node.nexts[0].token.type != BinOpType.EXPONENT:
                     node_child_index = next((i for i, x in enumerate(out_dict) if x[0] == node.nexts[0]), None)
                 # add the exponent to list
                     if node_child_index != None:

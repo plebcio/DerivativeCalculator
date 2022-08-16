@@ -248,9 +248,16 @@ def deparser(node: AstNode) -> 'list[Token]':
     
     if node.token.value == BinOpType.EXPONENT:
         # simplify a^-1 -> 1/a
-        if childB.token.value == 1:
+        if childB.token.value == -1:
             token_list.append( Token(TokenType.NUMBER, 1))
             token_list.append(Token(TokenType.BINOP, BinOpType.DIVIDE))
+            token_list.append(Token(TokenType.LPEREN))
+            token_list += left_list
+            token_list.append( Token(TokenType.RPAREN))
+            return token_list
+
+        # a^1 -> a
+        if childB.token.value == 1:
             token_list.append(Token(TokenType.LPEREN))
             token_list += left_list
             token_list.append( Token(TokenType.RPAREN))
