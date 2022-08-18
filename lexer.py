@@ -17,7 +17,7 @@ FUNC_NAMES = ['sin', 'cos', 'exp', 'arcsin', "sqrt", "ln", "tan", "cot"]
 class TokenType(Enum):
 
     NUMBER   = 0
-    BINOP    = 1
+    BINOP    = 1j
     LPEREN   = 2
     RPAREN   = 3
     FUNC     = 4
@@ -460,6 +460,9 @@ class Lexer:
 
         if f_name not in FUNC_NAMES:
             raise Exception(f"Ileagal func name {f_name}")
+        # handle input like "sin*4"
+        elif self.curent_char != "(":
+            raise Exception(f"Expected '(' got {self.curent_char} for func {f_name}")
         return Token(TokenType.FUNC, f_name)
 
 
