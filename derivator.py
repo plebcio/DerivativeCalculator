@@ -22,7 +22,7 @@ def derivator(node: AstNode) -> AstNode:
     call derive on chid nodes and compose the output and retun as AST
     the AST will later be prosprocesed, like ln(e^x) -> x, x^-5 * x^5 -> x
     """
-    if node.token.type == TokenType.NUMBER or node.token.type == TokenType.NUM_E:
+    if node.token.type in (TokenType.CONST ,TokenType.NUMBER, TokenType.NUM_E):
         output_root.token = Token( TokenType.NUMBER, 0 )
         # output_root.token = Token( TokenType.NUMBER, node.token.value - 5 )
 
@@ -67,7 +67,6 @@ def d_func(node: AstNode) -> AstNode:
     # check for inverse functions and simplify
     if node.token.value in func_invers:
         if func_invers[node.token.value] == node.nexts[0].token.value:
-            print("pppp")
             return derivator(node.nexts[0].nexts[0])
 
     # chain rule
@@ -212,6 +211,7 @@ def d_exp(f: AstNode, g: AstNode) -> AstNode:
 def cleanup(node: AstNode) -> AstNode:
 
     if len(node.nexts) == 0:
+        print(node)
         return node
 
     # clean up subtrees

@@ -6,13 +6,17 @@ l = lexer.Lexer(text)
 tokens = l.generate_tokens()
 tokens = lexer.preParser(tokens)
 
+print(tokens)
+
 
 a = lexer.Parser(tokens)
+
+print(a)
+
 a = cleanup(a)
 a = derivator(a)
 a = cleanup(a)
 a = lexer.deparser(a)
-print(a)
 a = lexer.uncleanup(a)
 a = lexer.delexer(a)
 

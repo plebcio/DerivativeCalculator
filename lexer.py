@@ -340,6 +340,9 @@ def delexer(token_list: 'list[Token]') -> str:
             out_list.append(token.value)
         elif token.type == TokenType.VAR:
             out_list.append(token.value)
+        elif token.type == TokenType.CONST:
+            out_list.append(token.value)
+
         # only binops left
         elif token.value == BinOpType.PLUS:
             out_list.append("+")
@@ -439,14 +442,22 @@ class Lexer:
 
         return Token(TokenType.NUMBER, float(numer_str)) 
 
+
+    # improved error handling
     def generate_function(self):
         f_name = ""
-        while self.curent_char != "(":
+        while self.curent_char not in "()^*/+-":
             if self.curent_char == None:
                 raise Exception(f"Ileagal phrase {f_name}")
 
             f_name += self.curent_char
             self.advance()
+        
+        # handle consts
+        if len(f_name) == 1:
+            # interprete this as a const
+            return Token(TokenType.CONST, f_name)
+
         if f_name not in FUNC_NAMES:
             raise Exception(f"Ileagal func name {f_name}")
         return Token(TokenType.FUNC, f_name)
