@@ -1,4 +1,5 @@
 from decimal import DivisionByZero
+from ExceptionClass import myException
 from lexer import Token, TokenType, BinOpType, AstNode
 import copy
 import math
@@ -211,7 +212,6 @@ def d_exp(f: AstNode, g: AstNode) -> AstNode:
 def cleanup(node: AstNode) -> AstNode:
 
     if len(node.nexts) == 0:
-        print(node)
         return node
 
     # clean up subtrees
@@ -406,12 +406,10 @@ def func_cleanup(node: AstNode) -> AstNode:
 def mul_list_to_dict(myList: list):
     """
     takes list of operations conected with '*'
-    and returns a dict of: { base, list of exponents }
-    eg key = Astnode, like (Token = VAR x, nexts=[]) , val = [3x, 4, -6, sin(x)] !!! changed 
-    Functions cannot be keys - keys cannot have next lists TODO handle fucntions
-    """
     # change outdict to list of tuples so i can have nodes as keys
     # [(key, val)] - slower but now (x+1) can be a key
+    """
+
     out_list = []
     out_dict = []
     out_num = 1
@@ -436,8 +434,6 @@ def mul_list_to_dict(myList: list):
         elif node.token.value == BinOpType.EXPONENT:
             # we will only simplify one node deep
             # if left node is not in 
-            # (TokenType.VAR, TokenType.CONST, TokenType.NUMBER, TokenType.NUM_E)  
-            # then it we be left as is
 
             # !!!!!!!!!!!!!! old version
             # if node.nexts[0].token.type in \

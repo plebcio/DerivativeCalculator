@@ -1,6 +1,8 @@
 """
 codes: 0: num, 1: bianryOp1 (+, -), 2: bianryOp2 (*, /), 3: bianryOp3 ( ^ ), 4: parems '()',  5: uniaryOp ( sin, exp, log, ln  )
 """
+from ExceptionClass import myException
+
 VAR_NAME = ["x", "y", "z"]
 
 from cgi import print_arguments
@@ -121,7 +123,20 @@ BinOpsOrder = [
 
 
 
+def myException_handler(func):
+    def wrapper(*args, **kwargs):
+        try:
+            return func(*args, **kwargs)
+        except myException as e:
+            raise e
+    try:
+        return wrapper
+    except myException as e:
+        raise e
 
+
+
+@myException_handler
 def Parser(tokens) -> AstNode:
     new_root = AstNode()
     parems_open = 0
@@ -135,7 +150,7 @@ def Parser(tokens) -> AstNode:
     for curr_op in range(3):
         if curr_op != 2:
             for i, token in enumerate(reversed(tokens)):
-                # since exponent is left associative list has to be rereversed TODO
+
                 i = len(tokens) - i - 1
                 
                 # handle parems
@@ -157,15 +172,17 @@ def Parser(tokens) -> AstNode:
                         new_root.token = token
                         # add child nodes
                         # TODO
-                        new_root.nexts.append( Parser( tokens[:i:] ) )
-                        new_root.nexts.append( Parser( tokens[i+1::] ) )
+                        try:
+                            new_root.nexts.append( Parser( tokens[:i:] ) )
+                            new_root.nexts.append( Parser( tokens[i+1::] ) )
+                        except IndexError:
+                            raise myException(tokens[0:i:], "Operator requires two args")
                         return new_root
 
         # exponent since its right asociative
         else:
             for i, token in enumerate(tokens):
 
-                # since exponent is left associative list has to be rereversed TODO
                 
                 # handle parems
 
@@ -186,13 +203,16 @@ def Parser(tokens) -> AstNode:
                         new_root.token = token
                         # add child nodes
                         # TODO
-                        new_root.nexts.append( Parser( tokens[:i:] ) )
-                        new_root.nexts.append( Parser( tokens[i+1::] ) )
+                        try:
+                            new_root.nexts.append( Parser( tokens[:i:] ) )
+                            new_root.nexts.append( Parser( tokens[i+1::] ) )
+                        except IndexError:
+                            raise myException(tokens[0:i:], "Operator requires two args")
                         return new_root
 
 
         if parems_open != 0:
-            raise Exception("\nNot the same amout of open and closed parems\n")    
+            raise myException(tokens[0:i:], "Not the same amout of open and closed parenthesis")
 
     # handle parenthesis
     # i think this can only mean that input is of form:  ( expresion )
@@ -211,7 +231,6 @@ def Parser(tokens) -> AstNode:
 
 # converts AST into string
 # need to pass empty array when calling from outside this func 
-# major TODO
 def deparser(node: AstNode) -> 'list[Token]':
     
     # basicly inorder tree search 
@@ -446,10 +465,8 @@ class Lexer:
     # improved error handling
     def generate_function(self):
         f_name = ""
-        while self.curent_char not in "()^*/+-":
-            if self.curent_char == None:
-                raise Exception(f"Ileagal phrase {f_name}")
-
+        while self.curent_char != None  and self.curent_char not in "()^*/+-":
+            
             f_name += self.curent_char
             self.advance()
         
@@ -459,10 +476,10 @@ class Lexer:
             return Token(TokenType.CONST, f_name)
 
         if f_name not in FUNC_NAMES:
-            raise Exception(f"Ileagal func name {f_name}")
+            raise myException(self.tokens, f"Ileagal func name {f_name}")
         # handle input like "sin*4"
         elif self.curent_char != "(":
-            raise Exception(f"Expected '(' got {self.curent_char} for func {f_name}")
+            raise myException(self.tokens, f"Expected '(' got {self.curent_char} for func {f_name}")
         return Token(TokenType.FUNC, f_name)
 
 
@@ -508,8 +525,12 @@ class Lexer:
             
             # unknow character - function
             else:
-                # maybe function - build fucnton - or const - TODO later
-                self.tokens.append(self.generate_function())
+                # bubble exception up to main
+                try:                
+                    self.tokens.append(self.generate_function())
+                except myException as e:
+                    raise e
+
                 continue
 
             self.advance()
