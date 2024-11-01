@@ -1,1 +1,0 @@
-node.nexts = tmp_l

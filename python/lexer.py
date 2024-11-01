@@ -19,7 +19,7 @@ FUNC_NAMES = ['sin', 'cos', 'exp', 'arcsin', "sqrt", "ln", "tan", "cot"]
 class TokenType(Enum):
 
     NUMBER   = 0
-    BINOP    = 1j
+    BINOP    = 1
     LPEREN   = 2
     RPAREN   = 3
     FUNC     = 4
